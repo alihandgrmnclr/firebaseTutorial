@@ -1,15 +1,17 @@
 <template>
 <div class="app">
-  <div>
-    <h1>Users</h1>
-    <ul>
-      <li v-for="user in users" :key="user.id">
-        <p>User Name: {{ user.name }}</p>
-        <p>User Age: {{ user.age }}</p>
-        <p>Is Active: {{ user.isActive }}</p>
-      </li>
-    </ul>
+  <h1>Users</h1>
+  <!-- User List -->
+  <div class="list">
+    <UserList
+      :users="users"
+      @updateUser="updateUser"
+      @deleteUser="deleteUser"
+    />
   </div>
+  
+  <!-- Add New User -->
+  <CreateForm @addUser="createUser" />
 </div>
 </template>
 
@@ -18,21 +20,43 @@ import { ref, onMounted } from 'vue'
 //
 import db from '../firebase/config'
 //
-import { onSnapshot, collection, getDocs,   } from 'firebase/firestore'
+import { doc, onSnapshot, collection, addDoc, deleteDoc, updateDoc } from 'firebase/firestore'
+//
+import CreateForm from './components/CreateForm.vue'
+import UserList from './components/UserList.vue'
 
 const users = ref([])
 
+function createUser(user) {
+  addDoc(collection(db, "users"), {
+    name: user.name,
+    age: user.age,
+    isActive: user.isActive,
+    id: user.id
+  })
+}
+function updateUser(user) {
+  updateDoc(doc(db, "users", user.docId), {
+    name: user.name,
+    age: user.age,
+    isActive: user.isActive
+  })
+}
+async function deleteUser(id) {
+  await deleteDoc(doc(db, "users", id))
+  alert('User deleted successfully')
+}
 
 onMounted(async () => {
-  // Fetch data
-  // const querySnapshot = await getDocs(collection(db, "users"))
-  // users.value = querySnapshot.docs.map(doc => doc.data())
-  // console.log("Users:", users.value)
-
   // Realtime data
   onSnapshot(collection(db, "users"), (querySnapshot) => {
-    users.value = querySnapshot.docs.map(doc => doc.data())
-    console.log("Users:", users.value)
+    users.value = []
+    querySnapshot.forEach((doc) => {
+      users.value.push({
+        docId: doc.id,
+        ...doc.data()
+      })
+    })
   })
 })
 
@@ -41,7 +65,12 @@ onMounted(async () => {
 <style scoped>
 .app{
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+}
+.list {
+  max-height: 700px;
+  overflow: auto;
 }
 </style>
